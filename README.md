@@ -13,16 +13,18 @@ Download from [SALICON 2017](https://salicon.net/challenge-2017/) and place the 
 
 Dataset structure:
 
+```text
 Saliency_GAN/
 └── data/
     ├── images/
     │   ├── train/
     │   ├── val/
-    │   └── test/  
+    │   └── test/
     ├── maps/
     │   ├── train/
     │   └── val/
     └── fixations/
         ├── train/
         ├── val/
-        └── test/  
+        └── test/
+```
