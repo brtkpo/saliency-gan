@@ -1,0 +1,16 @@
+# PyCharm
+.idea/
+
+# Virtual env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Model checkpoints
+*.pt
+*.pth
+
+# Data (NIE wrzucamy SALICON na GitHuba)
+data/
