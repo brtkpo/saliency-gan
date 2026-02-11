@@ -8,6 +8,11 @@ from model import Generator, Discriminator
 from tqdm import tqdm
 import pandas as pd
 
+def tv_loss(x):
+    h_variation = torch.mean(torch.abs(x[:, :, 1:, :] - x[:, :, :-1, :]))
+    w_variation = torch.mean(torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1]))
+    return h_variation + w_variation
+
 epoch_results = []
 DATA_DIR = "data"
 SPLIT_TRAIN = "train"
@@ -15,22 +20,28 @@ SPLIT_VAL = "val"
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 4
 LR = 2e-4
-NUM_EPOCHS = 50
+NUM_EPOCHS = 25
+lambda_l1 = 100
+lambda_tv = 0.1
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", DEVICE)
 
 CHECKPOINT_DIR = "checkpoints"
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-train_dataset = SaliconDataset(split=SPLIT_TRAIN, data_dir=DATA_DIR, img_size=IMG_SIZE)
-val_dataset = SaliconDataset(split=SPLIT_VAL, data_dir=DATA_DIR, img_size=IMG_SIZE)
+EARLY_STOP_PATIENCE = 5
+best_val_l1 = float("inf")
+epochs_no_improve = 0
+
+train_dataset = SaliconDataset(split=SPLIT_TRAIN, data_dir=DATA_DIR, img_size=IMG_SIZE, augment=True)
+val_dataset = SaliconDataset(split=SPLIT_VAL, data_dir=DATA_DIR, img_size=IMG_SIZE, augment=False)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 gen = Generator(in_channels=3, out_channels=1).to(DEVICE)
 disc = Discriminator(in_channels=4).to(DEVICE)
 
-criterion_GAN = nn.BCEWithLogitsLoss()
+criterion_GAN = nn.MSELoss()
 criterion_L1 = nn.L1Loss()
 
 optimizer_G = optim.Adam(gen.parameters(), lr=LR, betas=(0.5, 0.999))
@@ -95,7 +106,8 @@ for epoch in range(1, NUM_EPOCHS + 1):
 
         loss_G_GAN = criterion_GAN(pred_fake_for_G, real_labels_for_G)
         loss_G_L1 = criterion_L1(fake_maps, sal_maps)
-        loss_G = loss_G_GAN + 100 * loss_G_L1
+        #loss_G = loss_G_GAN + 100 * loss_G_L1
+        loss_G = loss_G_GAN + lambda_l1 * loss_G_L1 + lambda_tv * tv_loss(fake_maps)
         loss_G.backward()
         optimizer_G.step()
 
@@ -110,6 +122,18 @@ for epoch in range(1, NUM_EPOCHS + 1):
           f"Val L1: {val_l1:.4f}")
 
     save_checkpoint(epoch, val_l1)
+
+    if val_l1 < best_val_l1:
+        best_val_l1 = val_l1
+        epochs_no_improve = 0
+        save_checkpoint(epoch, val_l1)
+    else:
+        epochs_no_improve += 1
+        print(f"No improvement for {epochs_no_improve} epoch(s)")
+
+    if epochs_no_improve >= EARLY_STOP_PATIENCE:
+        print(f"Early stopping triggered at epoch {epoch}")
+        break
 
     epoch_results.append({
         "epoch": epoch,

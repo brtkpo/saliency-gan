@@ -6,7 +6,8 @@ from model import Generator
 DATA_DIR = "data"
 IMG_SIZE = (224, 224)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-CHECKPOINT_PATH = "checkpoints/checkpoint_epoch_15_valL1_0.0713.pth"
+# CHECKPOINT_PATH = "checkpoints/checkpoint_epoch_15_valL1_0.0713.pth"
+CHECKPOINT_PATH = "checkpoints/checkpoint_epoch_20_valL1_0.0665.pth"
 
 val_dataset = SaliconDataset(
     split="val",
@@ -19,7 +20,7 @@ checkpoint = torch.load(CHECKPOINT_PATH, map_location=DEVICE)
 gen.load_state_dict(checkpoint["gen_state_dict"])
 gen.eval()
 
-idx = 118
+idx = 1112
 img_name, image, sal_gt = val_dataset[idx]
 
 image = image.unsqueeze(0).to(DEVICE)

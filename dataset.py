@@ -3,15 +3,17 @@ from PIL import Image
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import random
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 class SaliconDataset(Dataset):
-    def __init__(self, split="train", data_dir="data", img_size=(224, 224)):
+    def __init__(self, split="train", data_dir="data", img_size=(224, 224), augment=False):
         assert split in ["train", "val"], "split must be train or val for maps"
         self.split = split
         self.img_size = img_size
+        self.augment = augment
         self.img_dir = os.path.join(data_dir, "images", split)
         self.map_dir = os.path.join(data_dir, "maps", split)
 
@@ -29,6 +31,15 @@ class SaliconDataset(Dataset):
 
         image = Image.open(img_path).convert("RGB").resize(self.img_size)
         sal_map = Image.open(map_path).convert("L").resize(self.img_size)
+
+        if self.augment and self.split == "train":
+            if random.random() > 0.5:
+                image = image.transpose(Image.FLIP_LEFT_RIGHT)
+                sal_map = sal_map.transpose(Image.FLIP_LEFT_RIGHT)
+
+            angle = random.uniform(-15, 15)
+            image = image.rotate(angle, resample=Image.BILINEAR)
+            sal_map = sal_map.rotate(angle, resample=Image.BILINEAR)
 
         image_tensor = torch.from_numpy(np.array(image).transpose(2,0,1)).float() / 255.0
         sal_tensor = torch.from_numpy(np.array(sal_map)[None, ...]).float() / 255.0

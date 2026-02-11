@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class Generator(nn.Module):
     def __init__(self, in_channels=3, out_channels=1, features=64):
@@ -16,6 +17,7 @@ class Generator(nn.Module):
         self.dec4 = nn.ConvTranspose2d(features*2, out_channels, kernel_size=4, stride=2, padding=1)
 
         self.out_act = nn.Sigmoid()
+        self.blur = GaussianBlur(channels=out_channels)
 
     def __call__(self, x):
         return self.forward(x)
@@ -30,7 +32,9 @@ class Generator(nn.Module):
         d2 = self.dec2(torch.cat([d1, e3], dim=1))
         d3 = self.dec3(torch.cat([d2, e2], dim=1))
         d4 = self.dec4(torch.cat([d3, e1], dim=1))
-        return self.out_act(d4)
+        x = self.out_act(d4)
+        x = self.blur(x)
+        return x
 
     @staticmethod
     def contract_block(in_channels, out_channels, kernel_size, stride, padding):
@@ -84,3 +88,23 @@ def init_weights(net, init_type='normal', init_gain=0.02):
             if hasattr(m, 'bias') and m.bias is not None:
                 nn.init.constant_(m.bias.data, 0.0)
     net.apply(init_func)
+
+class GaussianBlur(nn.Module):
+    def __init__(self, channels=1, kernel_size=11, sigma=4):
+        super().__init__()
+        self.kernel_size = kernel_size
+
+        ax = torch.arange(-kernel_size // 2 + 1., kernel_size // 2 + 1.)
+        xx, yy = torch.meshgrid(ax, ax, indexing="ij")
+        kernel = torch.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+        kernel = kernel / kernel.sum()
+
+        kernel = kernel.view(1, 1, kernel_size, kernel_size)
+        self.register_buffer("weight", kernel.repeat(channels, 1, 1, 1))
+
+    def forward(self, x):
+        return F.conv2d(
+            x, self.weight,
+            padding=self.kernel_size // 2,
+            groups=x.shape[1]
+        )
