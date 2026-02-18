@@ -1,0 +1,11 @@
+.idea/
+
+.venv/
+
+__pycache__/
+*.pyc
+
+*.pt
+*.pth
+
+data/
