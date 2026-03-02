@@ -1,8 +1,5 @@
-# for CPU
-pip install -r requirements.txt   
-# for NVIDIA GPU:
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt --no-deps
+pip install uv
+uv sync
 
 #Data
 https://salicon.net/challenge-2017/
