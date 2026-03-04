@@ -4,7 +4,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import os
 
-RESULTS_DIR = "results"
+RESULTS_DIR = "../results"
 CSV_PATH = os.path.join(RESULTS_DIR, "results_val_full.csv")
 
 df = pd.read_csv(CSV_PATH)

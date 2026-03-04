@@ -14,7 +14,7 @@ from tqdm import tqdm
 from model import Generator
 from dataset import SaliconDataset
 
-DATA_DIR = "data"
+DATA_DIR = "../data"
 SPLIT = "val"
 
 fix_dir = os.path.join(DATA_DIR, "fixations", "val")

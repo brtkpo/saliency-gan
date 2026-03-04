@@ -71,6 +71,6 @@ class SaliconDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = SaliconDataset(split="train", data_dir="data", img_size=(224,224))
+    dataset = SaliconDataset(split="train", data_dir="../data", img_size=(224,224))
     for i in range(min(10, len(dataset))):
         dataset.visualize(i)

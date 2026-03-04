@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 from dataset import SaliconDataset
 from model import Generator
 
-DATA_DIR = "data"
-RESULTS_DIR = "results"
+DATA_DIR = "../data"
+RESULTS_DIR = "../results"
 CSV_PATH = os.path.join(RESULTS_DIR, "results_val_full.csv")
-CHECKPOINT_PATH = "checkpoints/best_model.pth"
+CHECKPOINT_PATH = "../checkpoints/best_model.pth"
 IMG_SIZE = (224, 224)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

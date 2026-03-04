@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from dataset import SaliconDataset
 from model import Generator
 
-DATA_DIR = "data"
+DATA_DIR = "../data"
 IMG_SIZE = (224, 224)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # CHECKPOINT_PATH = "checkpoints/checkpoint_epoch_15_valL1_0.0713.pth"

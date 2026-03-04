@@ -31,7 +31,7 @@ def init_weights(net, init_type='normal', init_gain=0.02):
 
     net.apply(init_func)
 
-DATA_DIR = "data"
+DATA_DIR = "../data"
 SPLIT_TRAIN = "train"
 SPLIT_VAL = "val"
 IMG_SIZE = (224, 224)
