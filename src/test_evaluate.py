@@ -2,42 +2,25 @@ import os
 import torch
 import numpy as np
 import pandas as pd
-import cv2
 import scipy.io as sio
 from PIL import Image
-
 from torch.utils.data import DataLoader
 from sklearn.metrics import roc_auc_score
 from scipy.stats import pearsonr
 from tqdm import tqdm
 
-from model import Generator
-from dataset import SaliconDataset
-
-DATA_DIR = "../data"
-SPLIT = "val"
-
-fix_dir = os.path.join(DATA_DIR, "fixations", "val")
-dataset = SaliconDataset(split="val", data_dir=DATA_DIR, img_size=224)
-
-IMG_SIZE = (224, 224)
-BATCH_SIZE = 1
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-CHECKPOINT_PATH = "checkpoints/best_model.pth"
-
-RESULTS_DIR = "results"
-os.makedirs(RESULTS_DIR, exist_ok=True)
+from .model import Generator
+from .dataset import SaliconDataset
 
 # METRICS
 def normalize_map(m):
+    """Normalize map to sum to 1"""
     m = m.astype(np.float32)
     return m / (m.sum() + 1e-7)
 
 def compute_metrics(pred_map, gt_map, fixations, orig_w, orig_h):
+    """Compute AUC, NSS, CC, KLDiv, SIM for one image"""
     h, w = pred_map.shape
-
-    # fixation mask
     fix_mask = np.zeros((h, w), dtype=np.uint8)
 
     scale_x = w / orig_w
@@ -61,11 +44,8 @@ def compute_metrics(pred_map, gt_map, fixations, orig_w, orig_h):
         return None
 
     # AUC
-    pred_flat = pred_map.flatten()
-    fix_flat = fix_mask.flatten()
-
     try:
-        auc = roc_auc_score(fix_flat, pred_flat)
+        auc = roc_auc_score(fix_mask.flatten(), pred_map.flatten())
     except ValueError:
         auc = 0.5
 
@@ -98,71 +78,91 @@ def compute_metrics(pred_map, gt_map, fixations, orig_w, orig_h):
         "SIM": sim
     }
 
-# LOAD MODEL
-gen = Generator(in_channels=3, out_channels=1).to(DEVICE)
-ckpt = torch.load(CHECKPOINT_PATH, map_location=DEVICE)
-gen.load_state_dict(ckpt["gen_state_dict"])
-gen.eval()
+def run_evaluation(
+    data_dir: str,
+    checkpoint_path: str,
+    results_dir: str,
+    split: str = "val",
+    img_size: tuple = (224, 224),
+    device: torch.device = None,
+):
+    """Evaluate saliency model on dataset and save results"""
 
-# DATASET
-img_dir = os.path.join(DATA_DIR, "images", SPLIT)
-#map_dir = os.path.join(DATA_DIR, "maps", "val")   # GT maps tylko dla val
-fix_dir = os.path.join(DATA_DIR, "fixations", SPLIT)
+    os.makedirs(results_dir, exist_ok=True)
 
-dataset = SaliconDataset(split="val", data_dir=DATA_DIR, img_size=IMG_SIZE)
-loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    # Load dataset
+    dataset = SaliconDataset(split=split, data_dir=data_dir, img_size=img_size)
+    loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-results = []
+    # Load model
+    gen = Generator(in_channels=3, out_channels=1).to(device)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    gen.load_state_dict(checkpoint["gen_state_dict"])
+    gen.eval()
 
-# EVALUATION LOOP
-for img_name, img_tensor, gt_tensor in tqdm(loader, desc="Evaluating"):
-    img_tensor = img_tensor.to(DEVICE)
-    img_filename = img_name[0]
+    # Fixations folder
+    fix_dir = os.path.join(data_dir, "fixations", split)
 
-    with torch.no_grad():
-        pred = gen(img_tensor).cpu().numpy()[0, 0]
+    results = []
 
-    pred = pred.astype(np.float32)
-    gt = gt_tensor.numpy()[0, 0].astype(np.float32)
+    for img_name, img_tensor, gt_tensor in tqdm(loader, desc="Evaluating"):
+        img_tensor = img_tensor.to(device)
+        img_filename = img_name[0]
 
-    orig_img_path = os.path.join(img_dir, img_filename)
-    with Image.open(orig_img_path) as orig_img:
-        orig_w, orig_h = orig_img.size
+        with torch.no_grad():
+            pred = gen(img_tensor).cpu().numpy()[0, 0]
 
-    base = os.path.splitext(img_filename)[0]
-    mat_path = os.path.join(fix_dir, base + ".mat")
+        pred = pred.astype(np.float32)
+        gt = gt_tensor.numpy()[0, 0].astype(np.float32)
 
-    if not os.path.exists(mat_path):
-        continue
+        # Original image size
+        orig_img_path = os.path.join(data_dir, "images", split, img_filename)
+        with Image.open(orig_img_path) as orig_img:
+            orig_w, orig_h = orig_img.size
 
-    mat = sio.loadmat(mat_path)
-    fixations = []
+        # Load fixation file
+        base = os.path.splitext(img_filename)[0]
+        mat_path = os.path.join(fix_dir, base + ".mat")
+        if not os.path.exists(mat_path):
+            continue
 
-    if "gaze" in mat:
-        for subj in mat["gaze"][0]:
-            if "fixations" in subj.dtype.names:
-                fix = subj["fixations"]
-                if fix.size > 0:
-                    for f in fix:
-                        fixations.append(f)
+        mat = sio.loadmat(mat_path)
+        fixations = []
 
-    if len(fixations) == 0:
-        continue
+        if "gaze" in mat:
+            for subj in mat["gaze"][0]:
+                if "fixations" in subj.dtype.names:
+                    fix = subj["fixations"]
+                    if fix.size > 0:
+                        for f in fix:
+                            fixations.append(f)
 
-    metrics = compute_metrics(pred, gt, fixations, orig_w, orig_h)
+        if len(fixations) == 0:
+            continue
 
-    if metrics is None:
-        continue
+        metrics = compute_metrics(pred, gt, fixations, orig_w, orig_h)
+        if metrics is None:
+            continue
 
-    metrics["image"] = img_filename
-    results.append(metrics)
+        metrics["image"] = img_filename
+        results.append(metrics)
 
-# SAVE RESULTS
-df = pd.DataFrame(results)
-df.to_csv(os.path.join(RESULTS_DIR, f"results_{SPLIT}_full.csv"), index=False)
+    # Save results
+    df = pd.DataFrame(results)
+    df.to_csv(os.path.join(results_dir, f"results_{split}_full.csv"), index=False)
+    summary = df.mean(numeric_only=True).to_frame(name="Mean").T
+    summary.to_csv(os.path.join(results_dir, f"results_{split}_summary.csv"), index=False)
 
-summary = df.mean(numeric_only=True).to_frame(name="Mean").T
-summary.to_csv(os.path.join(RESULTS_DIR, f"results_{SPLIT}_summary.csv"), index=False)
+    print("\n=== RESULTS SUMMARY ===")
+    print(summary)
+    return df, summary
 
-print("\n=== RESULTS SUMMARY ===")
-print(summary)
+
+# if __name__ == "__main__":
+#     run_evaluation(
+#         data_dir="../data",
+#         checkpoint_path="../checkpoints/best_model.pth",
+#         results_dir="../results",
+#         split="val",
+#         img_size=(224, 224),
+#     )

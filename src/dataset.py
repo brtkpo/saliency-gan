@@ -46,31 +46,31 @@ class SaliconDataset(Dataset):
 
         return img_name, image_tensor, sal_tensor
 
-    def visualize(self, idx):
-        img_name, image_tensor, sal_tensor = self[idx]
-        image = np.transpose(image_tensor.numpy(), (1,2,0))
-        sal_map = sal_tensor.squeeze(0).numpy()
+    # def visualize(self, idx):
+    #     img_name, image_tensor, sal_tensor = self[idx]
+    #     image = np.transpose(image_tensor.numpy(), (1,2,0))
+    #     sal_map = sal_tensor.squeeze(0).numpy()
+    #
+    #     plt.figure(figsize=(12,4))
+    #     plt.subplot(1,3,1)
+    #     plt.imshow(image)
+    #     plt.title(f"{img_name}")
+    #     plt.axis("off")
+    #
+    #     plt.subplot(1,3,2)
+    #     plt.imshow(sal_map, cmap="hot")
+    #     plt.title(f"Saliency map")
+    #     plt.axis("off")
+    #
+    #     plt.subplot(1,3,3)
+    #     plt.imshow(image)
+    #     plt.imshow(sal_map, cmap="hot", alpha=0.5)
+    #     plt.title(f"{img_name} + overlay")
+    #     plt.axis("off")
+    #     plt.show()
 
-        plt.figure(figsize=(12,4))
-        plt.subplot(1,3,1)
-        plt.imshow(image)
-        plt.title(f"{img_name}")
-        plt.axis("off")
 
-        plt.subplot(1,3,2)
-        plt.imshow(sal_map, cmap="hot")
-        plt.title(f"Saliency map")
-        plt.axis("off")
-
-        plt.subplot(1,3,3)
-        plt.imshow(image)
-        plt.imshow(sal_map, cmap="hot", alpha=0.5)
-        plt.title(f"{img_name} + overlay")
-        plt.axis("off")
-        plt.show()
-
-
-if __name__ == "__main__":
-    dataset = SaliconDataset(split="train", data_dir="../data", img_size=(224,224))
-    for i in range(min(10, len(dataset))):
-        dataset.visualize(i)
+#if __name__ == "__main__":
+#    dataset = SaliconDataset(split="train", data_dir="../data", img_size=(224,224))
+#    for i in range(min(10, len(dataset))):
+#        dataset.visualize(i)

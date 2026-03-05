@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "mode": null,
+    "data_dir": "data",
+    "results_dir": "results",
+    "checkpoint_dir": "checkpoints"
+  },
+  "model_config":{
+    "img_size": [224, 224],
+    "batch_size": 4,
+    "lr": 0.0002,
+    "num_epochs": 35,
+    "early_stop_patience": 7,
+    "lambda_l1": 10.0,
+    "lambda_kld": 5.0,
+    "lambda_tv": 0.001
+  },
+  "visualization": {
+    "visualize_mode": "evaluate",
+    "visualize_single": 2137,
+    "visualize_results": true
+  }  
+}

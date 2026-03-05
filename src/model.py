@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
+
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResidualBlock, self).__init__()
@@ -29,6 +30,7 @@ class ResidualBlock(nn.Module):
         out += identity
         return self.relu(out)
 
+
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ASPP, self).__init__()
@@ -51,6 +53,7 @@ class ASPP(nn.Module):
         out = torch.cat((x1, x2, x3, x4), dim=1)
         out = self.bn(out)
         return self.project(F.relu(out))
+
 
 class Generator(nn.Module):
     def __init__(self, in_channels=3, out_channels=1, features=64):
@@ -108,6 +111,7 @@ class Generator(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
+
 
 class Discriminator(nn.Module):
     def __init__(self, in_channels=4, features=[64, 128, 256, 512]):
