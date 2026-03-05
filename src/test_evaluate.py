@@ -8,18 +8,65 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import roc_auc_score
 from scipy.stats import pearsonr
 from tqdm import tqdm
+from typing import Optional
 
 from .model import Generator
 from .dataset import SaliconDataset
 
 # METRICS
-def normalize_map(m):
-    """Normalize map to sum to 1"""
+def normalize_map(m: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
+    """
+    Normalize saliency map so that its values sum to 1.
+
+    Parameters
+    ----------
+    m : np.ndarray
+        Saliency map.
+
+    Returns
+    -------
+    np.ndarray
+        Normalized saliency map representing a probability distribution.
+    """
     m = m.astype(np.float32)
     return m / (m.sum() + 1e-7)
 
-def compute_metrics(pred_map, gt_map, fixations, orig_w, orig_h):
-    """Compute AUC, NSS, CC, KLDiv, SIM for one image"""
+def compute_metrics(
+    pred_map: np.ndarray[np.float32],
+    gt_map: np.ndarray[np.float32],
+    fixations: list[any],
+    orig_w: int,
+    orig_h: int,
+) -> Optional[dict[str, float]]:
+    """
+    Compute saliency evaluation metrics for a single image.
+
+    The following metrics are computed:
+    - AUC
+    - NSS
+    - CC
+    - KL divergence
+    - SIM
+
+    Parameters
+    ----------
+    pred_map : np.ndarray
+        Predicted saliency map of shape (H, W).
+    gt_map : np.ndarray
+        Ground truth saliency map of shape (H, W).
+    fixations : list
+        List of fixation coordinates loaded from SALICON `.mat` files.
+    orig_w : int
+        Original image width.
+    orig_h : int
+        Original image height.
+
+    Returns
+    -------
+    dict or None
+        Dictionary containing computed metrics. Returns None if
+        no valid fixation points are available.
+    """
     h, w = pred_map.shape
     fix_mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -82,16 +129,43 @@ def run_evaluation(
     data_dir: str,
     checkpoint_path: str,
     results_dir: str,
-    split: str = "val",
-    img_size: tuple = (224, 224),
-    device: torch.device = None,
-):
-    """Evaluate saliency model on dataset and save results"""
+    split: str,
+    img_size: tuple[int, int],
+    device: torch.device,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Evaluate saliency model on a dataset split.
+
+    This function loads the trained generator model, runs inference on
+    the dataset, computes evaluation metrics for each image, and saves
+    both per-image results and summary statistics.
+
+    Parameters
+    ----------
+    data_dir : str
+        Path to dataset directory.
+    checkpoint_path : str
+        Path to trained model checkpoint.
+    results_dir : str
+        Directory where evaluation results will be saved.
+    split : str, optional
+        Dataset split to evaluate ("train" or "val").
+    img_size : tuple[int, int], optional
+        Image resolution used during inference.
+    device : torch.device or None, optional
+        Device used for inference.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        - DataFrame containing metrics for each image
+        - DataFrame containing mean summary metrics
+    """
 
     os.makedirs(results_dir, exist_ok=True)
 
     # Load dataset
-    dataset = SaliconDataset(split=split, data_dir=data_dir, img_size=img_size)
+    dataset = SaliconDataset(split=split, data_dir=data_dir, img_size=img_size, augment=False)
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # Load model
@@ -133,9 +207,10 @@ def run_evaluation(
             for subj in mat["gaze"][0]:
                 if "fixations" in subj.dtype.names:
                     fix = subj["fixations"]
-                    if fix.size > 0:
-                        for f in fix:
-                            fixations.append(f)
+                    if not fix.size > 0:
+                        continue
+                    for f in fix:
+                        fixations.append(f)
 
         if len(fixations) == 0:
             continue
@@ -147,7 +222,6 @@ def run_evaluation(
         metrics["image"] = img_filename
         results.append(metrics)
 
-    # Save results
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(results_dir, f"results_{split}_full.csv"), index=False)
     summary = df.mean(numeric_only=True).to_frame(name="Mean").T
@@ -156,13 +230,3 @@ def run_evaluation(
     print("\n=== RESULTS SUMMARY ===")
     print(summary)
     return df, summary
-
-
-# if __name__ == "__main__":
-#     run_evaluation(
-#         data_dir="../data",
-#         checkpoint_path="../checkpoints/best_model.pth",
-#         results_dir="../results",
-#         split="val",
-#         img_size=(224, 224),
-#     )

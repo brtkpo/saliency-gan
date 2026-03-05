@@ -10,21 +10,80 @@ import torch.amp
 from .dataset import SaliconDataset
 from .model import Generator, Discriminator
 
-def tv_loss(x):
-    """Total variation loss for smoothness"""
+def tv_loss(x: torch.Tensor) -> torch.Tensor:
+    """
+    Compute total variation loss.
+
+    This loss encourages spatial smoothness in predicted saliency maps by
+    penalizing large differences between neighboring pixels.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor of shape (B, C, H, W).
+
+    Returns
+    -------
+    torch.Tensor
+        Scalar tensor representing total variation loss.
+    """
     h_variation = torch.mean(torch.abs(x[:, :, 1:, :] - x[:, :, :-1, :]))
     w_variation = torch.mean(torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1]))
     return h_variation + w_variation
 
-def kl_divergence_loss(pred, target, eps=1e-7):
-    """KL divergence for saliency maps"""
+def kl_divergence_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    eps: float = 1e-7
+) -> torch.Tensor:
+    """
+    Compute KL divergence between predicted and ground-truth saliency maps.
+
+    Both maps are normalized to form probability distributions.
+
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted saliency map of shape (B, 1, H, W).
+    target : torch.Tensor
+        Ground-truth saliency map of shape (B, 1, H, W).
+    eps : float, optional
+        Small constant added for numerical stability.
+
+    Returns
+    -------
+    torch.Tensor
+        Mean KL divergence over the batch.
+    """
     pred_norm = pred / (torch.sum(pred, dim=(2, 3), keepdim=True) + eps)
     target_norm = target / (torch.sum(target, dim=(2, 3), keepdim=True) + eps)
     loss = target_norm * torch.log((target_norm + eps) / (pred_norm + eps))
     return torch.sum(loss, dim=(2, 3)).mean()
 
-def init_weights(net, init_type='normal', init_gain=0.02):
-    """Initialize network weights"""
+def init_weights(
+    net: nn.Module,
+    init_type: str = "normal",
+    init_gain: float = 0.02
+) -> None:
+    """
+    Initialize network weights.
+
+    Convolutional and linear layers are initialized according to the
+    selected initialization method.
+
+    Parameters
+    ----------
+    net : nn.Module
+        Neural network to initialize.
+    init_type : str, optional
+        Initialization method. Currently supported: "normal".
+    init_gain : float, optional
+        Standard deviation used for normal initialization.
+
+    Returns
+    -------
+    None
+    """
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -35,18 +94,55 @@ def init_weights(net, init_type='normal', init_gain=0.02):
     net.apply(init_func)
 
 def train_model(
-    data_dir,
-    checkpoint_dir,
-    img_size,
-    batch_size,
-    lr,
-    num_epochs,
-    early_stop_patience,
-    lambda_l1,
-    lambda_kld,
-    lambda_tv,
-    device
-):
+    data_dir: str,
+    checkpoint_dir: str,
+    img_size: tuple[int, int],
+    batch_size: int,
+    lr: float,
+    num_epochs: int,
+    early_stop_patience: int,
+    lambda_l1: float,
+    lambda_kld: float,
+    lambda_tv: float,
+    device: torch.device
+) -> None:
+    """
+    Train the saliency prediction GAN model.
+
+    This function trains the generator and discriminator networks using
+    adversarial loss combined with reconstruction and regularization losses.
+    Training progress is evaluated on the validation set and the best model
+    checkpoint is saved.
+
+    Parameters
+    ----------
+    data_dir : str
+        Path to dataset directory containing images and saliency maps.
+    checkpoint_dir : str
+        Directory where model checkpoints will be saved.
+    img_size : tuple[int, int]
+        Input image resolution used for training.
+    batch_size : int
+        Number of samples per batch.
+    lr : float
+        Learning rate for both generator and discriminator optimizers.
+    num_epochs : int
+        Maximum number of training epochs.
+    early_stop_patience : int
+        Number of epochs without improvement before early stopping.
+    lambda_l1 : float
+        Weight for L1 reconstruction loss.
+    lambda_kld : float
+        Weight for KL divergence loss.
+    lambda_tv : float
+        Weight for total variation loss.
+    device : torch.device
+        Device used for training (CPU or CUDA).
+
+    Returns
+    -------
+    None
+    """
 
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -73,7 +169,21 @@ def train_model(
 
     scaler = torch.amp.GradScaler('cuda')
 
-    def save_checkpoint(epoch, val_loss):
+    def save_checkpoint(epoch: int, val_loss: float) -> None:
+        """
+        Save model checkpoint.
+
+        Parameters
+        ----------
+        epoch : int
+            Current training epoch.
+        val_loss : float
+            Validation loss at the checkpoint.
+
+        Returns
+        -------
+        None
+        """
         torch.save({
             "gen_state_dict": gen.state_dict(),
             "disc_state_dict": disc.state_dict(),
@@ -83,7 +193,20 @@ def train_model(
             "val_loss": val_loss
         }, os.path.join(checkpoint_dir, "best_model.pth"))
 
-    def evaluate(val_loader):
+    def evaluate(val_loader: DataLoader) -> float:
+        """
+        Evaluate generator performance on validation dataset.
+
+        Parameters
+        ----------
+        val_loader : DataLoader
+            DataLoader for validation dataset.
+
+        Returns
+        -------
+        float
+            Mean validation loss.
+        """
         gen.eval()
         total_val_loss = 0.0
         with torch.no_grad():
@@ -183,4 +306,7 @@ def train_model(
             "loss_D": avg_loss_D,
             "val_loss": val_loss
         })
-        pd.DataFrame(epoch_results).to_csv("training_results.csv", index=False)
+        pd.DataFrame(epoch_results).to_csv(
+            os.path.join(checkpoint_dir, "training_results.csv"),
+            index=False
+        )

@@ -1,6 +1,8 @@
 pip install uv
 uv sync
 
+uv run main.py -c config.json
+
 #Data
 https://salicon.net/challenge-2017/
 Images, Fixations and Fixation Maps

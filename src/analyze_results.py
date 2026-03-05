@@ -3,8 +3,21 @@ import matplotlib
 matplotlib.use("TkAgg")
 import os
 
-def analyze_results(results_dir="results", csv_name="results_val_full.csv"):
+def analyze_results(results_dir: str = "results", csv_name: str = "results_val_full.csv") -> None:
+    """
+    Analyze saliency model results from a CSV file.
 
+    Parameters
+    ----------
+    results_dir : str, optional
+        Path to the directory containing the results CSV file. Default is "results".
+    csv_name : str, optional
+        Name of the CSV file to analyze. Default is "results_val_full.csv".
+
+    Returns
+    -------
+    None
+    """
     csv_path = os.path.join(results_dir, csv_name)
     df = pd.read_csv(csv_path)
 

@@ -10,4 +10,3 @@ src/__pycache__/
 *.pth
 
 data/
-results/results_val_full_no_opt.csv

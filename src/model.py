@@ -5,7 +5,24 @@ from torch.nn.utils import spectral_norm
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
+    """
+    Residual convolutional block used in the encoder part of the generator.
+
+    This block consists of two convolutional layers with batch normalization
+    and a residual skip connection. If the input and output channel sizes
+    differ, a projection is applied to the skip path.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of input channels.
+    out_channels : int
+        Number of output channels.
+    stride : int, optional
+        Stride applied in the first convolution layer. Default is 1.
+    """
+
+    def __init__(self, in_channels: int, out_channels: int, stride: int = 1) -> None:
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -20,7 +37,20 @@ class ResidualBlock(nn.Module):
                 nn.BatchNorm2d(out_channels)
             )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Perform forward pass through the residual block.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (B, C, H, W).
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after applying residual connection.
+        """
         identity = self.skip(x)
         out = self.conv1(x)
         out = self.bn1(out)
@@ -32,7 +62,20 @@ class ResidualBlock(nn.Module):
 
 
 class ASPP(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    """
+    Atrous Spatial Pyramid Pooling module.
+
+    This module captures multi-scale contextual information using parallel
+    dilated convolutions with different dilation rates.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of input feature channels.
+    out_channels : int
+        Number of output feature channels.
+    """
+    def __init__(self, in_channels: int, out_channels: int) -> None:
         super(ASPP, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 1, bias=False)
         self.conv2 = nn.Conv2d(in_channels, out_channels, 3, padding=6, dilation=6, bias=False)
@@ -45,7 +88,20 @@ class ASPP(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the ASPP module.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input feature map (B, C, H, W)
+
+        Returns
+        -------
+        torch.Tensor
+            Output feature map (B, out_channels, H, W)
+        """
         x1 = self.conv1(x)
         x2 = self.conv2(x)
         x3 = self.conv3(x)
@@ -56,7 +112,28 @@ class ASPP(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, in_channels=3, out_channels=1, features=64):
+    """
+    Generator network for saliency map prediction.
+
+    The model follows an encoder–decoder architecture with residual blocks,
+    skip connections, and an ASPP bottleneck to capture multi-scale features.
+
+    Parameters
+    ----------
+    in_channels : int, optional
+        Number of input image channels. Default is 3.
+    out_channels : int, optional
+        Number of output channels for the saliency map. Default is 1.
+    features : int, optional
+        Base number of convolutional filters used in the encoder. Default is 64.
+    """
+
+    def __init__(
+            self,
+            in_channels: int = 3,
+            out_channels: int = 1,
+            features: int = 64
+    ) -> None:
         super(Generator, self).__init__()
 
         self.init_conv = nn.Sequential(
@@ -85,7 +162,20 @@ class Generator(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the generator.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input image tensor (B, 3, H, W)
+
+        Returns
+        -------
+        torch.Tensor:
+            Predicted saliency map (B, 1, H, W)
+        """
         x_init = self.init_conv(x)
 
         e1 = self.enc1(x_init)
@@ -104,7 +194,25 @@ class Generator(nn.Module):
         return out
 
     @staticmethod
-    def expand_block(in_channels, out_channels):
+    def expand_block(in_channels: int, out_channels: int) -> nn.Sequential:
+        """
+        Create a decoder upsampling block.
+
+        The block performs bilinear upsampling followed by convolution,
+        batch normalization, and ReLU activation.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels.
+        out_channels : int
+            Number of output channels.
+
+        Returns
+        -------
+        nn.Sequential
+            Sequential module implementing the upsampling block.
+        """
         return nn.Sequential(
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False),
@@ -114,7 +222,26 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, in_channels=4, features=[64, 128, 256, 512]):
+    """
+    PatchGAN discriminator used for adversarial training.
+
+    The discriminator operates on the concatenation of the input image and
+    the predicted or ground-truth saliency map.
+
+    Parameters
+    ----------
+    in_channels : int, optional
+        Number of input channels (image + saliency map). Default is 4.
+    features : list[int], optional
+        List specifying the number of feature channels in each layer.
+        Default is [64, 128, 256, 512].
+    """
+
+    def __init__(
+            self,
+            in_channels: int = 4,
+            features: list[int] = [64, 128, 256, 512]
+    ) -> None:
         super(Discriminator, self).__init__()
         layers = []
 
@@ -133,5 +260,18 @@ class Discriminator(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the discriminator.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor (B, 4, H, W)
+
+        Returns
+        -------
+        torch.Tensor:
+            PatchGAN prediction map.
+        """
         return self.model(x)

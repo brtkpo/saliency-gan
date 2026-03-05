@@ -34,7 +34,7 @@ def main():
     checkpoint_dir.mkdir(exist_ok=True)
 
     model_cfg = cfg.get("model_config", {})
-    img_size = tuple(model_cfg.get("img_size", (224, 224)))
+    img_size: tuple[int, int] = tuple(int(x) for x in model_cfg.get("img_size", (224, 224)))
     batch_size = model_cfg.get("batch_size", 4)
     lr = model_cfg.get("lr", 2e-4)
     num_epochs = model_cfg.get("num_epochs", 35)
@@ -85,6 +85,7 @@ def main():
             img_size=img_size,
             idx=visualize_single,
             device=device,
+            split="val",
         )
 
     if visualize_results_flag:

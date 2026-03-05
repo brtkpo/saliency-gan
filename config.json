@@ -17,7 +17,7 @@
   },
   "visualization": {
     "visualize_mode": "evaluate",
-    "visualize_single": 2137,
-    "visualize_results": true
+    "visualize_results": true,
+    "visualize_single": 2137
   }  
 }

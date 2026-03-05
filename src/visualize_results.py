@@ -7,19 +7,39 @@ import matplotlib.pyplot as plt
 
 from .dataset import SaliconDataset
 from .model import Generator
+from .utils import prepare_tensors_for_visualization
 
 
 def visualize_results(
-        data_dir="../data",
-        results_dir="../results",
-        csv_path=None,
-        checkpoint_path="../checkpoints/best_model.pth",
-        img_size=(224, 224),
-        device=None,
-):
+    data_dir: str,
+    results_dir: str,
+    checkpoint_path: str,
+    img_size: tuple[int, int],
+    device: torch.device,
+) -> None:
+    """
+    Visualize the top and bottom predicted saliency maps based on AUC.
 
-    if csv_path is None:
-        csv_path = os.path.join(results_dir, "results_val_full.csv")
+    Parameters
+    ----------
+    data_dir : str, optional
+        Path to the dataset directory (default is "../data").
+    results_dir : str, optional
+        Path to the results directory containing CSV and to save visuals (default is "../results").
+    checkpoint_path : str, optional
+        Path to the generator model checkpoint (default is "../checkpoints/best_model.pth").
+    img_size : tuple of int, optional
+        Target image size as (height, width) (default is (224, 224)).
+    device : torch.device or None, optional
+        Torch device to use. If None, will use CUDA if available, otherwise CPU.
+
+    Returns
+    -------
+    None
+        Saves visualizations of top/bottom images to the results directory.
+    """
+
+    csv_path = os.path.join(results_dir, "results_val_full.csv")
 
     best_dir = os.path.join(results_dir, "visuals_best")
     worst_dir = os.path.join(results_dir, "visuals_worst")
@@ -31,55 +51,63 @@ def visualize_results(
     gen.load_state_dict(checkpoint["gen_state_dict"])
     gen.eval()
 
-    dataset = SaliconDataset(split="val", data_dir=data_dir, img_size=img_size)
+    dataset = SaliconDataset(split="val", data_dir=data_dir, img_size=img_size, augment=False)
     df = pd.read_csv(csv_path)
 
-    def save_comparison(img_name, auc_val, save_folder, prefix):
+    def save_comparison(img_name: str, auc_val: float, save_folder: str, prefix: str) -> None:
+        """
+        Save a comparison plot of original image, ground truth, prediction, and overlay.
+
+        Parameters
+        ----------
+        img_name : str
+            Name of the image file.
+        auc_val : float
+            AUC score of the prediction.
+        save_folder : str
+            Directory to save the visualization.
+        prefix : str
+            Prefix for the saved file name.
+
+        Returns
+        -------
+        None
+        """
         try:
             idx = dataset.images.index(img_name)
         except ValueError:
             print(f"Didn't find {img_name} in validation set.")
             return
 
-        _, image_tensor, gt_tensor = dataset[idx]
-        image_input = image_tensor.unsqueeze(0).to(device)
-
-        with torch.no_grad():
-            pred = gen(image_input)
-
-        pred_np = pred.squeeze().cpu().numpy()
-        pred_np = (pred_np - pred_np.min()) / (pred_np.max() - pred_np.min() + 1e-8)
-
-        gt_np = gt_tensor.squeeze().cpu().numpy()
-        gt_np = (gt_np - gt_np.min()) / (gt_np.max() - gt_np.min() + 1e-8)
-
-        img_np = image_tensor.cpu().permute(1, 2, 0).numpy()
-        img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-8)
+        dataset_item = dataset[idx]
+        image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
 
         plt.figure(figsize=(20, 5))
+        plt.suptitle(f"Saliency Visualization for {img_name})", fontsize=16)
 
         plt.subplot(1, 4, 1)
-        plt.title(f"Original\n{img_name}")
-        plt.imshow(img_np)
+        plt.title(f"Original")
+        plt.imshow(image_np)
         plt.axis('off')
 
         plt.subplot(1, 4, 2)
         plt.title("Ground Truth (GT)")
-        plt.imshow(gt_np, cmap='jet')
+        plt.imshow(gt_map, cmap='jet')
         plt.axis('off')
 
         plt.subplot(1, 4, 3)
         plt.title(f"Predicted (AUC: {auc_val:.4f})")
-        plt.imshow(pred_np, cmap='jet')
+        plt.imshow(saliency, cmap='jet')
         plt.axis('off')
 
         plt.subplot(1, 4, 4)
         plt.title("Overlay")
-        plt.imshow(img_np)
-        plt.imshow(pred_np, cmap='jet', alpha=0.4)
+        plt.imshow(image_np)
+        plt.imshow(saliency, cmap='jet', alpha=0.4)
         plt.axis('off')
 
         plt.tight_layout()
+        plt.subplots_adjust(top=0.85)
         save_path = os.path.join(save_folder, f"{prefix}_{img_name}")
         plt.savefig(save_path, bbox_inches='tight')
         plt.close()
