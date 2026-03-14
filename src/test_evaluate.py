@@ -13,6 +13,7 @@ from typing import Optional
 from .model import Generator
 from .dataset import SaliconDataset
 
+
 # METRICS
 def normalize_map(m: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
     """
@@ -30,6 +31,7 @@ def normalize_map(m: np.ndarray[np.float32]) -> np.ndarray[np.float32]:
     """
     m = m.astype(np.float32)
     return m / (m.sum() + 1e-7)
+
 
 def compute_metrics(
     pred_map: np.ndarray[np.float32],
@@ -77,7 +79,7 @@ def compute_metrics(
         try:
             x, y = fix[0], fix[1]
         except IndexError:
-            x, y = fix['x'][0][0], fix['y'][0][0]
+            x, y = fix["x"][0][0], fix["y"][0][0]
 
         scaled_x = int(x * scale_x)
         scaled_y = int(y * scale_y)
@@ -117,13 +119,8 @@ def compute_metrics(
     g_sim = g_sim / g_sim.sum()
     sim = np.sum(np.minimum(p_sim, g_sim))
 
-    return {
-        "AUC": auc,
-        "NSS": nss,
-        "CC": cc,
-        "KLDiv": kl,
-        "SIM": sim
-    }
+    return {"AUC": auc, "NSS": nss, "CC": cc, "KLDiv": kl, "SIM": sim}
+
 
 def run_evaluation(
     data_dir: str,
@@ -165,7 +162,9 @@ def run_evaluation(
     os.makedirs(results_dir, exist_ok=True)
 
     # Load dataset
-    dataset = SaliconDataset(split=split, data_dir=data_dir, img_size=img_size, augment=False)
+    dataset = SaliconDataset(
+        split=split, data_dir=data_dir, img_size=img_size, augment=False
+    )
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # Load model
@@ -225,7 +224,9 @@ def run_evaluation(
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(results_dir, f"results_{split}_full.csv"), index=False)
     summary = df.mean(numeric_only=True).to_frame(name="Mean").T
-    summary.to_csv(os.path.join(results_dir, f"results_{split}_summary.csv"), index=False)
+    summary.to_csv(
+        os.path.join(results_dir, f"results_{split}_summary.csv"), index=False
+    )
 
     print("\n=== RESULTS SUMMARY ===")
     print(summary)

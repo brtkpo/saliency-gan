@@ -10,6 +10,7 @@ import torch.amp
 from .dataset import SaliconDataset
 from .model import Generator, Discriminator
 
+
 def tv_loss(x: torch.Tensor) -> torch.Tensor:
     """
     Compute total variation loss.
@@ -31,10 +32,9 @@ def tv_loss(x: torch.Tensor) -> torch.Tensor:
     w_variation = torch.mean(torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1]))
     return h_variation + w_variation
 
+
 def kl_divergence_loss(
-    pred: torch.Tensor,
-    target: torch.Tensor,
-    eps: float = 1e-7
+    pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-7
 ) -> torch.Tensor:
     """
     Compute KL divergence between predicted and ground-truth saliency maps.
@@ -60,10 +60,9 @@ def kl_divergence_loss(
     loss = target_norm * torch.log((target_norm + eps) / (pred_norm + eps))
     return torch.sum(loss, dim=(2, 3)).mean()
 
+
 def init_weights(
-    net: nn.Module,
-    init_type: str = "normal",
-    init_gain: float = 0.02
+    net: nn.Module, init_type: str = "normal", init_gain: float = 0.02
 ) -> None:
     """
     Initialize network weights.
@@ -84,14 +83,19 @@ def init_weights(
     -------
     None
     """
+
     def init_func(m):
         classname = m.__class__.__name__
-        if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
-            if init_type == 'normal':
+        if hasattr(m, "weight") and (
+            classname.find("Conv") != -1 or classname.find("Linear") != -1
+        ):
+            if init_type == "normal":
                 nn.init.normal_(m.weight.data, 0.0, init_gain)
-        if hasattr(m, 'bias') and m.bias is not None:
+        if hasattr(m, "bias") and m.bias is not None:
             nn.init.constant_(m.bias.data, 0.0)
+
     net.apply(init_func)
+
 
 def train_model(
     data_dir: str,
@@ -104,7 +108,7 @@ def train_model(
     lambda_l1: float,
     lambda_kld: float,
     lambda_tv: float,
-    device: torch.device
+    device: torch.device,
 ) -> None:
     """
     Train the saliency prediction GAN model.
@@ -147,11 +151,27 @@ def train_model(
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     print("Loading Datasets...")
-    train_dataset = SaliconDataset(split="train", data_dir=data_dir, img_size=img_size, augment=True)
-    val_dataset = SaliconDataset(split="val", data_dir=data_dir, img_size=img_size, augment=False)
+    train_dataset = SaliconDataset(
+        split="train", data_dir=data_dir, img_size=img_size, augment=True
+    )
+    val_dataset = SaliconDataset(
+        split="val", data_dir=data_dir, img_size=img_size, augment=False
+    )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
 
     gen = Generator(in_channels=3, out_channels=1).to(device)
     disc = Discriminator(in_channels=4).to(device)
@@ -164,10 +184,14 @@ def train_model(
     optimizer_G = optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
     optimizer_D = optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
 
-    scheduler_G = optim.lr_scheduler.ReduceLROnPlateau(optimizer_G, mode='min', factor=0.5, patience=3, verbose=True)
-    scheduler_D = optim.lr_scheduler.ReduceLROnPlateau(optimizer_D, mode='min', factor=0.5, patience=3, verbose=True)
+    scheduler_G = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer_G, mode="min", factor=0.5, patience=3, verbose=True
+    )
+    scheduler_D = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer_D, mode="min", factor=0.5, patience=3, verbose=True
+    )
 
-    scaler = torch.amp.GradScaler('cuda')
+    scaler = torch.amp.GradScaler("cuda")
 
     def save_checkpoint(epoch: int, val_loss: float) -> None:
         """
@@ -184,14 +208,17 @@ def train_model(
         -------
         None
         """
-        torch.save({
-            "gen_state_dict": gen.state_dict(),
-            "disc_state_dict": disc.state_dict(),
-            "optimizer_G": optimizer_G.state_dict(),
-            "optimizer_D": optimizer_D.state_dict(),
-            "epoch": epoch,
-            "val_loss": val_loss
-        }, os.path.join(checkpoint_dir, "best_model.pth"))
+        torch.save(
+            {
+                "gen_state_dict": gen.state_dict(),
+                "disc_state_dict": disc.state_dict(),
+                "optimizer_G": optimizer_G.state_dict(),
+                "optimizer_D": optimizer_D.state_dict(),
+                "epoch": epoch,
+                "val_loss": val_loss,
+            },
+            os.path.join(checkpoint_dir, "best_model.pth"),
+        )
 
     def evaluate(val_loader: DataLoader) -> float:
         """
@@ -214,7 +241,7 @@ def train_model(
                 images = images.to(device)
                 sal_maps = sal_maps.to(device)
 
-                with torch.amp.autocast('cuda'):
+                with torch.amp.autocast("cuda"):
                     preds = gen(images)
                     l1 = criterion_L1(preds, sal_maps)
                     kld = kl_divergence_loss(preds, sal_maps)
@@ -243,7 +270,7 @@ def train_model(
 
             optimizer_D.zero_grad()
 
-            with torch.amp.autocast('cuda'):
+            with torch.amp.autocast("cuda"):
                 fake_maps = gen(images)
                 real_input = torch.cat([images, sal_maps], dim=1)
                 fake_input = torch.cat([images, fake_maps.detach()], dim=1)
@@ -260,14 +287,16 @@ def train_model(
 
             optimizer_G.zero_grad()
 
-            with torch.amp.autocast('cuda'):
+            with torch.amp.autocast("cuda"):
                 fake_input = torch.cat([images, fake_maps], dim=1)
                 pred_fake_for_G = disc(fake_input)
 
-                loss_G = (criterion_GAN(pred_fake_for_G, torch.ones_like(pred_fake_for_G)) +
-                          lambda_l1 * criterion_L1(fake_maps, sal_maps) +
-                          lambda_kld * kl_divergence_loss(fake_maps, sal_maps) +
-                          lambda_tv * tv_loss(fake_maps))
+                loss_G = (
+                    criterion_GAN(pred_fake_for_G, torch.ones_like(pred_fake_for_G))
+                    + lambda_l1 * criterion_L1(fake_maps, sal_maps)
+                    + lambda_kld * kl_divergence_loss(fake_maps, sal_maps)
+                    + lambda_tv * tv_loss(fake_maps)
+                )
 
             scaler.scale(loss_G).backward()
             scaler.step(optimizer_G)
@@ -282,7 +311,9 @@ def train_model(
         avg_loss_D = epoch_loss_D / len(train_dataset)
         val_loss = evaluate(val_loader)
 
-        print(f"Epoch {epoch} Results | Loss G: {avg_loss_G:.4f} | Loss D: {avg_loss_D:.4f} | Val Loss: {val_loss:.4f}")
+        print(
+            f"Epoch {epoch} Results | Loss G: {avg_loss_G:.4f} | Loss D: {avg_loss_D:.4f} | Val Loss: {val_loss:.4f}"
+        )
 
         scheduler_G.step(val_loss)
         scheduler_D.step(val_loss)
@@ -300,13 +331,14 @@ def train_model(
             print("Early stopping triggered. Training complete.")
             break
 
-        epoch_results.append({
-            "epoch": epoch,
-            "loss_G": avg_loss_G,
-            "loss_D": avg_loss_D,
-            "val_loss": val_loss
-        })
+        epoch_results.append(
+            {
+                "epoch": epoch,
+                "loss_G": avg_loss_G,
+                "loss_D": avg_loss_D,
+                "val_loss": val_loss,
+            }
+        )
         pd.DataFrame(epoch_results).to_csv(
-            os.path.join(checkpoint_dir, "training_results.csv"),
-            index=False
+            os.path.join(checkpoint_dir, "training_results.csv"), index=False
         )

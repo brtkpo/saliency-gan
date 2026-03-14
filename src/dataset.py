@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset
 import random
 import matplotlib
+
 matplotlib.use("TkAgg")
 
 
@@ -13,12 +14,9 @@ class SaliconDataset(Dataset):
     This class loads RGB images and their corresponding saliency maps,
     optionally applying simple data augmentations during training.
     """
+
     def __init__(
-            self,
-            split: str,
-            data_dir: str,
-            img_size: tuple[int, int],
-            augment: bool
+        self, split: str, data_dir: str, img_size: tuple[int, int], augment: bool
     ) -> None:
         """
         Initialize the dataset.
@@ -43,7 +41,9 @@ class SaliconDataset(Dataset):
 
         self.images = sorted(os.listdir(self.img_dir))
         self.maps = sorted(os.listdir(self.map_dir))
-        assert len(self.images) == len(self.maps), f"Number of images and maps mismatch in split {split}"
+        assert len(self.images) == len(self.maps), (
+            f"Number of images and maps mismatch in split {split}"
+        )
 
     def __len__(self) -> int:
         """
@@ -89,7 +89,9 @@ class SaliconDataset(Dataset):
             image = image.rotate(angle, resample=Image.BILINEAR)
             sal_map = sal_map.rotate(angle, resample=Image.BILINEAR)
 
-        image_tensor = torch.from_numpy(np.array(image).transpose(2, 0, 1)).float() / 255.0
+        image_tensor = (
+            torch.from_numpy(np.array(image).transpose(2, 0, 1)).float() / 255.0
+        )
         sal_tensor = torch.from_numpy(np.array(sal_map)[None, ...]).float() / 255.0
 
         return img_name, image_tensor, sal_tensor

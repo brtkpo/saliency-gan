@@ -5,7 +5,7 @@ import numpy as np
 def prepare_tensors_for_visualization(
     dataset_item: tuple[str, torch.Tensor, torch.Tensor],
     gen: torch.nn.Module,
-    device: torch.device
+    device: torch.device,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
     """
     Prepare original image, ground truth map, and predicted saliency map

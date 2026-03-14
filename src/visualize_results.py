@@ -2,6 +2,7 @@ import os
 import torch
 import pandas as pd
 import matplotlib
+
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
@@ -51,10 +52,14 @@ def visualize_results(
     gen.load_state_dict(checkpoint["gen_state_dict"])
     gen.eval()
 
-    dataset = SaliconDataset(split="val", data_dir=data_dir, img_size=img_size, augment=False)
+    dataset = SaliconDataset(
+        split="val", data_dir=data_dir, img_size=img_size, augment=False
+    )
     df = pd.read_csv(csv_path)
 
-    def save_comparison(img_name: str, auc_val: float, save_folder: str, prefix: str) -> None:
+    def save_comparison(
+        img_name: str, auc_val: float, save_folder: str, prefix: str
+    ) -> None:
         """
         Save a comparison plot of original image, ground truth, prediction, and overlay.
 
@@ -80,7 +85,9 @@ def visualize_results(
             return
 
         dataset_item = dataset[idx]
-        image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
+        image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(
+            dataset_item, gen, device
+        )
 
         plt.figure(figsize=(20, 5))
         plt.suptitle(f"Saliency Visualization for {img_name})", fontsize=16)
@@ -88,28 +95,28 @@ def visualize_results(
         plt.subplot(1, 4, 1)
         plt.title(f"Original")
         plt.imshow(image_np)
-        plt.axis('off')
+        plt.axis("off")
 
         plt.subplot(1, 4, 2)
         plt.title("Ground Truth (GT)")
-        plt.imshow(gt_map, cmap='jet')
-        plt.axis('off')
+        plt.imshow(gt_map, cmap="jet")
+        plt.axis("off")
 
         plt.subplot(1, 4, 3)
         plt.title(f"Predicted (AUC: {auc_val:.4f})")
-        plt.imshow(saliency, cmap='jet')
-        plt.axis('off')
+        plt.imshow(saliency, cmap="jet")
+        plt.axis("off")
 
         plt.subplot(1, 4, 4)
         plt.title("Overlay")
         plt.imshow(image_np)
-        plt.imshow(saliency, cmap='jet', alpha=0.4)
-        plt.axis('off')
+        plt.imshow(saliency, cmap="jet", alpha=0.4)
+        plt.axis("off")
 
         plt.tight_layout()
         plt.subplots_adjust(top=0.85)
         save_path = os.path.join(save_folder, f"{prefix}_{img_name}")
-        plt.savefig(save_path, bbox_inches='tight')
+        plt.savefig(save_path, bbox_inches="tight")
         plt.close()
         print(f"Saved: {save_path}")
 
@@ -118,8 +125,8 @@ def visualize_results(
 
     print("\nProcessing BEST images...")
     for _, row in best_5.iterrows():
-        save_comparison(row['image'], row['AUC'], best_dir, "best")
+        save_comparison(row["image"], row["AUC"], best_dir, "best")
 
     print("\nProcessing WORST images...")
     for _, row in worst_5.iterrows():
-        save_comparison(row['image'], row['AUC'], worst_dir, "worst")
+        save_comparison(row["image"], row["AUC"], worst_dir, "worst")

@@ -8,20 +8,23 @@ from src.test_evaluate import run_evaluation
 from src.analyze_results import analyze_results
 from src.inference_visualize import run_inference_visualize
 from src.visualize_results import visualize_results
+
+
 def main():
     parser = argparse.ArgumentParser(description="Process a JSON config file.")
     parser.add_argument(
-        "--config", "-c",
+        "--config",
+        "-c",
         type=str,
         required=True,
-        help="Path to the JSON configuration file"
+        help="Path to the JSON configuration file",
     )
     args = parser.parse_args()
     config_path = Path(args.config)
 
     with open(config_path, "r") as f:
         cfg = json.load(f)
-        #print("success")
+        # print("success")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -34,7 +37,9 @@ def main():
     checkpoint_dir.mkdir(exist_ok=True)
 
     model_cfg = cfg.get("model_config", {})
-    img_size: tuple[int, int] = tuple(int(x) for x in model_cfg.get("img_size", (224, 224)))
+    img_size: tuple[int, int] = tuple(
+        int(x) for x in model_cfg.get("img_size", (224, 224))
+    )
     batch_size = model_cfg.get("batch_size", 4)
     lr = model_cfg.get("lr", 2e-4)
     num_epochs = model_cfg.get("num_epochs", 35)
@@ -60,7 +65,7 @@ def main():
             lambda_l1=lambda_l1,
             lambda_kld=lambda_kld,
             lambda_tv=lambda_tv,
-            device=device
+            device=device,
         )
 
     if mode in ["train", "evaluate"]:
@@ -96,7 +101,6 @@ def main():
             checkpoint_path=str(checkpoint_dir / "best_model.pth"),
             img_size=img_size,
             device=device,
-
         )
 
 

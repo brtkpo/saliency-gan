@@ -24,17 +24,28 @@ class ResidualBlock(nn.Module):
 
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1) -> None:
         super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
+        )
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.bn2 = nn.BatchNorm2d(out_channels)
 
         self.skip = nn.Sequential()
         if stride != 1 or in_channels != out_channels:
             self.skip = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
+                nn.Conv2d(
+                    in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+                ),
+                nn.BatchNorm2d(out_channels),
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -75,17 +86,24 @@ class ASPP(nn.Module):
     out_channels : int
         Number of output feature channels.
     """
+
     def __init__(self, in_channels: int, out_channels: int) -> None:
         super(ASPP, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 1, bias=False)
-        self.conv2 = nn.Conv2d(in_channels, out_channels, 3, padding=6, dilation=6, bias=False)
-        self.conv3 = nn.Conv2d(in_channels, out_channels, 3, padding=12, dilation=12, bias=False)
-        self.conv4 = nn.Conv2d(in_channels, out_channels, 3, padding=18, dilation=18, bias=False)
+        self.conv2 = nn.Conv2d(
+            in_channels, out_channels, 3, padding=6, dilation=6, bias=False
+        )
+        self.conv3 = nn.Conv2d(
+            in_channels, out_channels, 3, padding=12, dilation=12, bias=False
+        )
+        self.conv4 = nn.Conv2d(
+            in_channels, out_channels, 3, padding=18, dilation=18, bias=False
+        )
         self.bn = nn.BatchNorm2d(out_channels * 4)
         self.project = nn.Sequential(
             nn.Conv2d(out_channels * 4, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -129,17 +147,16 @@ class Generator(nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels: int = 3,
-            out_channels: int = 1,
-            features: int = 64
+        self, in_channels: int = 3, out_channels: int = 1, features: int = 64
     ) -> None:
         super(Generator, self).__init__()
 
         self.init_conv = nn.Sequential(
-            nn.Conv2d(in_channels, features, kernel_size=7, stride=1, padding=3, bias=False),
+            nn.Conv2d(
+                in_channels, features, kernel_size=7, stride=1, padding=3, bias=False
+            ),
             nn.BatchNorm2d(features),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
         self.enc1 = ResidualBlock(features, features, stride=2)
@@ -159,7 +176,7 @@ class Generator(nn.Module):
             nn.Conv2d(features, features // 2, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(features // 2, out_channels, kernel_size=1),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -214,10 +231,17 @@ class Generator(nn.Module):
             Sequential module implementing the upsampling block.
         """
         return nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
 
@@ -238,9 +262,7 @@ class Discriminator(nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels: int = 4,
-            features: list[int] = [64, 128, 256, 512]
+        self, in_channels: int = 4, features: list[int] = [64, 128, 256, 512]
     ) -> None:
         super(Discriminator, self).__init__()
         layers = []
@@ -249,7 +271,9 @@ class Discriminator(nn.Module):
             if idx == 0:
                 layers.append(spectral_norm(nn.Conv2d(in_channels, feature, 4, 2, 1)))
             else:
-                layers.append(spectral_norm(nn.Conv2d(features[idx - 1], feature, 4, 2, 1)))
+                layers.append(
+                    spectral_norm(nn.Conv2d(features[idx - 1], feature, 4, 2, 1))
+                )
                 layers.append(nn.BatchNorm2d(feature))
 
             layers.append(nn.LeakyReLU(0.2, inplace=True))

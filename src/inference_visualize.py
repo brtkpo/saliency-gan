@@ -5,6 +5,7 @@ from .dataset import SaliconDataset
 from .model import Generator
 from .utils import prepare_tensors_for_visualization
 
+
 def run_inference_visualize(
     data_dir: str,
     checkpoint_path: str,
@@ -51,26 +52,28 @@ def run_inference_visualize(
     )
 
     dataset_item = dataset[idx]
-    image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
+    image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(
+        dataset_item, gen, device
+    )
 
-    plt.figure(figsize=(16,4))
+    plt.figure(figsize=(16, 4))
 
-    plt.subplot(1,4,1)
+    plt.subplot(1, 4, 1)
     plt.title("Original image")
     plt.imshow(image_np)
     plt.axis("off")
 
-    plt.subplot(1,4,2)
+    plt.subplot(1, 4, 2)
     plt.title("Ground Truth (GT)")
     plt.imshow(gt_map, cmap="hot")
     plt.axis("off")
 
-    plt.subplot(1,4,3)
+    plt.subplot(1, 4, 3)
     plt.title("Predicted saliency")
     plt.imshow(saliency, cmap="hot")
     plt.axis("off")
 
-    plt.subplot(1,4,4)
+    plt.subplot(1, 4, 4)
     plt.title("Overlay (Pred)")
     plt.imshow(image_np)
     plt.imshow(saliency, cmap="hot", alpha=0.5)
