@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,6 +9,7 @@ import torch.amp
 
 from .dataset import SaliconDataset
 from .model import Generator, Discriminator
+from .config import Config
 
 
 def tv_loss(x: torch.Tensor) -> torch.Tensor:
@@ -98,16 +99,7 @@ def init_weights(
 
 
 def train_model(
-    data_dir: str,
-    checkpoint_dir: str,
-    img_size: tuple[int, int],
-    batch_size: int,
-    lr: float,
-    num_epochs: int,
-    early_stop_patience: int,
-    lambda_l1: float,
-    lambda_kld: float,
-    lambda_tv: float,
+    cfg: Config,
     device: torch.device,
 ) -> None:
     """
@@ -120,26 +112,8 @@ def train_model(
 
     Parameters
     ----------
-    data_dir : str
-        Path to dataset directory containing images and saliency maps.
-    checkpoint_dir : str
-        Directory where model checkpoints will be saved.
-    img_size : tuple[int, int]
-        Input image resolution used for training.
-    batch_size : int
-        Number of samples per batch.
-    lr : float
-        Learning rate for both generator and discriminator optimizers.
-    num_epochs : int
-        Maximum number of training epochs.
-    early_stop_patience : int
-        Number of epochs without improvement before early stopping.
-    lambda_l1 : float
-        Weight for L1 reconstruction loss.
-    lambda_kld : float
-        Weight for KL divergence loss.
-    lambda_tv : float
-        Weight for total variation loss.
+    cfg : Config
+        Application configuration containing meta and model settings.
     device : torch.device
         Device used for training (CPU or CUDA).
 
@@ -148,14 +122,31 @@ def train_model(
     None
     """
 
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    meta = cfg.meta
+    model = cfg.model
+
+    data_dir = Path(meta.data_dir)
+    checkpoint_dir = Path(cfg.meta.checkpoint_dir)
+    checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
+    best_model_path = checkpoint_dir / "best_model.pth"
+    training_csv_path = checkpoint_dir / "training_results.csv"
+
+    img_size: tuple[int, int] = model.img_size
+    batch_size: int = model.batch_size
+    lr: float = model.lr
+    num_epochs: int = model.num_epochs
+    early_stop_patience: int = model.early_stop_patience
+    lambda_l1: float = model.lambda_l1
+    lambda_kld: float = model.lambda_kld
+    lambda_tv: float = model.lambda_tv
 
     print("Loading Datasets...")
     train_dataset = SaliconDataset(
-        split="train", data_dir=data_dir, img_size=img_size, augment=True
+        split="train", data_dir=Path(data_dir), img_size=img_size, augment=True
     )
     val_dataset = SaliconDataset(
-        split="val", data_dir=data_dir, img_size=img_size, augment=False
+        split="val", data_dir=Path(data_dir), img_size=img_size, augment=False
     )
 
     train_loader = DataLoader(
@@ -217,7 +208,7 @@ def train_model(
                 "epoch": epoch,
                 "val_loss": val_loss,
             },
-            os.path.join(checkpoint_dir, "best_model.pth"),
+            best_model_path,
         )
 
     def evaluate(val_loader: DataLoader) -> float:
@@ -339,6 +330,4 @@ def train_model(
                 "val_loss": val_loss,
             }
         )
-        pd.DataFrame(epoch_results).to_csv(
-            os.path.join(checkpoint_dir, "training_results.csv"), index=False
-        )
+        pd.DataFrame(epoch_results).to_csv(training_csv_path, index=False)

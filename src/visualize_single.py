@@ -8,7 +8,7 @@ from .config import Config
 from .visualize_image import visualize_image
 
 
-def run_inference_visualize(
+def visualize_single(
     cfg: Config,
     device: torch.device,
 ) -> None:
@@ -56,4 +56,4 @@ def run_inference_visualize(
     image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
 
     save_folder = results_dir / "visuals_single"
-    visualize_image(image_np, gt_map, saliency, img_name, save_folder, prefix="single")
+    visualize_image(image_np, gt_map, saliency, img_name, save_folder)

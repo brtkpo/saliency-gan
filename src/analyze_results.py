@@ -1,28 +1,33 @@
 import pandas as pd
 import matplotlib
+from pathlib import Path
 
 matplotlib.use("TkAgg")
-import os
+
+from .config import Config
 
 
-def analyze_results(
-    results_dir: str = "results", csv_name: str = "results_val_full.csv"
-) -> None:
+def analyze_results(cfg: Config) -> None:
     """
     Analyze saliency model results from a CSV file.
 
     Parameters
     ----------
-    results_dir : str, optional
-        Path to the directory containing the results CSV file. Default is "results".
-    csv_name : str, optional
-        Name of the CSV file to analyze. Default is "results_val_full.csv".
+    cfg : Config
+        Application configuration containing meta, model, and visualization settings.
 
     Returns
     -------
     None
     """
-    csv_path = os.path.join(results_dir, csv_name)
+    meta = cfg.meta
+
+    results_dir = Path(meta.results_dir)
+    split = getattr(meta, "split", "val")
+
+    csv_name = f"results_{split}_full.csv"
+    csv_path = results_dir / csv_name
+
     df = pd.read_csv(csv_path)
 
     print("\n=== FIRST ROWS ===")

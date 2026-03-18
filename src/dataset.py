@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from PIL import Image
 import numpy as np
 import torch
@@ -16,7 +16,7 @@ class SaliconDataset(Dataset):
     """
 
     def __init__(
-        self, split: str, data_dir: str, img_size: tuple[int, int], augment: bool
+        self, split: str, data_dir: Path, img_size: tuple[int, int], augment: bool
     ) -> None:
         """
         Initialize the dataset.
@@ -36,11 +36,12 @@ class SaliconDataset(Dataset):
         self.split = split
         self.img_size = img_size
         self.augment = augment
-        self.img_dir = os.path.join(data_dir, "images", split)
-        self.map_dir = os.path.join(data_dir, "maps", split)
 
-        self.images = sorted(os.listdir(self.img_dir))
-        self.maps = sorted(os.listdir(self.map_dir))
+        self.img_dir = data_dir / "images" / split
+        self.map_dir = data_dir / "maps" / split
+
+        self.images = sorted([p for p in self.img_dir.iterdir() if p.is_file()])
+        self.maps = sorted([p for p in self.map_dir.iterdir() if p.is_file()])
         assert len(self.images) == len(self.maps), (
             f"Number of images and maps mismatch in split {split}"
         )
@@ -73,9 +74,8 @@ class SaliconDataset(Dataset):
             - image tensor of shape (3, H, W)
             - saliency map tensor of shape (1, H, W)
         """
-        img_name = self.images[idx]
-        img_path = os.path.join(self.img_dir, img_name)
-        map_path = os.path.join(self.map_dir, self.maps[idx])
+        img_path: Path = self.images[idx]
+        map_path: Path = self.maps[idx]
 
         image = Image.open(img_path).convert("RGB").resize(self.img_size)
         sal_map = Image.open(map_path).convert("L").resize(self.img_size)
@@ -94,4 +94,4 @@ class SaliconDataset(Dataset):
         )
         sal_tensor = torch.from_numpy(np.array(sal_map)[None, ...]).float() / 255.0
 
-        return img_name, image_tensor, sal_tensor
+        return img_path, image_tensor, sal_tensor

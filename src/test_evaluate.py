@@ -9,9 +9,11 @@ from sklearn.metrics import roc_auc_score
 from scipy.stats import pearsonr
 from tqdm import tqdm
 from typing import Optional
+from pathlib import Path
 
 from .model import Generator
 from .dataset import SaliconDataset
+from .config import Config
 
 
 # METRICS
@@ -123,11 +125,7 @@ def compute_metrics(
 
 
 def run_evaluation(
-    data_dir: str,
-    checkpoint_path: str,
-    results_dir: str,
-    split: str,
-    img_size: tuple[int, int],
+    cfg: Config,
     device: torch.device,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -139,17 +137,9 @@ def run_evaluation(
 
     Parameters
     ----------
-    data_dir : str
-        Path to dataset directory.
-    checkpoint_path : str
-        Path to trained model checkpoint.
-    results_dir : str
-        Directory where evaluation results will be saved.
-    split : str, optional
-        Dataset split to evaluate ("train" or "val").
-    img_size : tuple[int, int], optional
-        Image resolution used during inference.
-    device : torch.device or None, optional
+    cfg : Config
+        Application configuration containing meta, model, and visualization settings.
+    device : torch.device
         Device used for inference.
 
     Returns
@@ -159,21 +149,28 @@ def run_evaluation(
         - DataFrame containing mean summary metrics
     """
 
+    meta = cfg.meta
+    model = cfg.model
+
+    data_dir = meta.data_dir
+    results_dir = meta.results_dir
+    checkpoint_path = str(Path(meta.checkpoint_dir) / "best_model.pth")
+
+    split = getattr(meta, "split", "val")
+    img_size: tuple[int, int] = model.img_size
+
     os.makedirs(results_dir, exist_ok=True)
 
-    # Load dataset
     dataset = SaliconDataset(
         split=split, data_dir=data_dir, img_size=img_size, augment=False
     )
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-    # Load model
     gen = Generator(in_channels=3, out_channels=1).to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
     gen.load_state_dict(checkpoint["gen_state_dict"])
     gen.eval()
 
-    # Fixations folder
     fix_dir = os.path.join(data_dir, "fixations", split)
 
     results = []
@@ -188,12 +185,10 @@ def run_evaluation(
         pred = pred.astype(np.float32)
         gt = gt_tensor.numpy()[0, 0].astype(np.float32)
 
-        # Original image size
         orig_img_path = os.path.join(data_dir, "images", split, img_filename)
         with Image.open(orig_img_path) as orig_img:
             orig_w, orig_h = orig_img.size
 
-        # Load fixation file
         base = os.path.splitext(img_filename)[0]
         mat_path = os.path.join(fix_dir, base + ".mat")
         if not os.path.exists(mat_path):
