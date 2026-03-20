@@ -16,7 +16,6 @@
     "lambda_tv": 0.001
   },
   "visualization": {
-    "visualize_mode": "evaluate",
     "visualize_results": true,
     "visualize_single": 2137
   }  

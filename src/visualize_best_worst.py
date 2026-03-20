@@ -48,19 +48,19 @@ def visualize_best_worst(cfg: Config, device: torch.device) -> None:
     )
     df = pd.read_csv(results_dir / "results_val_full.csv")
 
-    best_5 = df.sort_values("AUC", ascending=False).head(5)
-    worst_5 = df.sort_values("AUC", ascending=True).head(5)
+    best_5 = df.sort_values("NSS", ascending=False).head(5)
+    worst_5 = df.sort_values("NSS", ascending=True).head(5)
 
     print("\nProcessing BEST images...")
     for _, row in best_5.iterrows():
         idx = [p.name for p in dataset.images].index(Path(row["image"]).name)
         dataset_item = dataset[idx]
         image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
-        visualize_image(image_np, gt_map, saliency, img_name, best_dir, prefix="best", auc_val=row["AUC"])
+        visualize_image(image_np, gt_map, saliency, img_name, best_dir, prefix="best", nss_val=row["NSS"])
 
     print("\nProcessing WORST images...")
     for _, row in worst_5.iterrows():
         idx = [p.name for p in dataset.images].index(Path(row["image"]).name)
         dataset_item = dataset[idx]
         image_np, gt_map, saliency, img_name = prepare_tensors_for_visualization(dataset_item, gen, device)
-        visualize_image(image_np, gt_map, saliency, img_name, worst_dir, prefix="worst", auc_val=row["AUC"])
+        visualize_image(image_np, gt_map, saliency, img_name, worst_dir, prefix="worst", nss_val=row["NSS"])

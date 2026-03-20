@@ -94,4 +94,4 @@ class SaliconDataset(Dataset):
         )
         sal_tensor = torch.from_numpy(np.array(sal_map)[None, ...]).float() / 255.0
 
-        return img_path, image_tensor, sal_tensor
+        return str(img_path), image_tensor, sal_tensor

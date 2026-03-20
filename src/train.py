@@ -86,6 +86,22 @@ def init_weights(
     """
 
     def init_func(m):
+        """
+        Initialize weights of a given layer in the network.
+
+        This function is applied to each module of the network. It initializes:
+          - Conv and Linear layer weights with a normal distribution (mean=0, std=init_gain)
+          - Bias terms to 0
+
+        Parameters
+        ----------
+        m : nn.Module
+            A single layer/module of the network.
+
+        Returns
+        -------
+        None
+        """
         classname = m.__class__.__name__
         if hasattr(m, "weight") and (
             classname.find("Conv") != -1 or classname.find("Linear") != -1
@@ -176,10 +192,10 @@ def train_model(
     optimizer_D = optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
 
     scheduler_G = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer_G, mode="min", factor=0.5, patience=3, verbose=True
+        optimizer_G, mode="min", factor=0.5, patience=3
     )
     scheduler_D = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer_D, mode="min", factor=0.5, patience=3, verbose=True
+        optimizer_D, mode="min", factor=0.5, patience=3
     )
 
     scaler = torch.amp.GradScaler("cuda")

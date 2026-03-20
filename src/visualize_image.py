@@ -11,7 +11,7 @@ def visualize_image(
     img_name: str,
     save_folder: Path,
     prefix: Optional[str] = None,
-    auc_val: Optional[float] = None,
+    nss_val: Optional[float] = None,
 ) -> None:
     """
     Generate and save a comparison plot of original image, ground truth, prediction, and overlay.
@@ -30,8 +30,8 @@ def visualize_image(
         Directory to save the visualization.
     prefix : str, optional
         Prefix for saved file name.
-    auc_val : float, optional
-        AUC value to show in the title of predicted map.
+    nss_val : float, optional
+        NSS value to show in the title of predicted map.
 
     Returns
     -------
@@ -54,8 +54,8 @@ def visualize_image(
 
     plt.subplot(1, 4, 3)
     title_pred = f"Predicted"
-    if auc_val is not None:
-        title_pred += f" (AUC: {auc_val:.4f})"
+    if nss_val is not None:
+        title_pred += f" (NSS: {nss_val:.4f})"
     plt.title(title_pred)
     plt.imshow(saliency, cmap="jet")
     plt.axis("off")

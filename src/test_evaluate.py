@@ -162,7 +162,7 @@ def run_evaluation(
     os.makedirs(results_dir, exist_ok=True)
 
     dataset = SaliconDataset(
-        split=split, data_dir=data_dir, img_size=img_size, augment=False
+        split=split, data_dir=Path(data_dir), img_size=img_size, augment=False
     )
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
@@ -171,13 +171,12 @@ def run_evaluation(
     gen.load_state_dict(checkpoint["gen_state_dict"])
     gen.eval()
 
-    fix_dir = os.path.join(data_dir, "fixations", split)
-
     results = []
 
     for img_name, img_tensor, gt_tensor in tqdm(loader, desc="Evaluating"):
         img_tensor = img_tensor.to(device)
-        img_filename = img_name[0]
+        orig_img_path = Path(img_name[0])
+        img_filename = orig_img_path.name
 
         with torch.no_grad():
             pred = gen(img_tensor).cpu().numpy()[0, 0]
@@ -185,12 +184,12 @@ def run_evaluation(
         pred = pred.astype(np.float32)
         gt = gt_tensor.numpy()[0, 0].astype(np.float32)
 
-        orig_img_path = os.path.join(data_dir, "images", split, img_filename)
         with Image.open(orig_img_path) as orig_img:
             orig_w, orig_h = orig_img.size
 
-        base = os.path.splitext(img_filename)[0]
-        mat_path = os.path.join(fix_dir, base + ".mat")
+        base = orig_img_path.stem
+        fix_dir = Path(data_dir) / "fixations" / split
+        mat_path = fix_dir / f"{base}.mat"
         if not os.path.exists(mat_path):
             continue
 
@@ -213,8 +212,7 @@ def run_evaluation(
         if metrics is None:
             continue
 
-        metrics["image"] = img_filename
-        results.append(metrics)
+        results.append({**metrics, "image": img_filename})
 
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(results_dir, f"results_{split}_full.csv"), index=False)
