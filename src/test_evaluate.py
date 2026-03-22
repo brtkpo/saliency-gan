@@ -14,6 +14,7 @@ from pathlib import Path
 from .model import Generator
 from .dataset import SaliconDataset
 from .config import Config
+from .load_model import load_model
 
 
 # METRICS
@@ -154,7 +155,7 @@ def run_evaluation(
 
     data_dir = meta.data_dir
     results_dir = meta.results_dir
-    checkpoint_path = str(Path(meta.checkpoint_dir) / "best_model.pth")
+    checkpoint_path = load_model(cfg)
 
     split = getattr(meta, "split", "val")
     img_size: tuple[int, int] = model.img_size

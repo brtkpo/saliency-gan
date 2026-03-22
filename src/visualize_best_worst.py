@@ -7,6 +7,7 @@ from .model import Generator
 from .utils import prepare_tensors_for_visualization
 from .config import Config
 from .visualize_image import visualize_image
+from .load_model import load_model
 
 
 def visualize_best_worst(cfg: Config, device: torch.device) -> None:
@@ -31,7 +32,9 @@ def visualize_best_worst(cfg: Config, device: torch.device) -> None:
 
     data_dir = Path(meta.data_dir)
     results_dir = Path(meta.results_dir)
-    checkpoint_path = Path(meta.checkpoint_dir) / "best_model.pth"
+    #checkpoint_path = Path(meta.checkpoint_dir) / "best_model.pth"
+    checkpoint_path = load_model(cfg)
+    #load_model(cfg, device)
 
     best_dir = results_dir / "visuals_best"
     worst_dir = results_dir / "visuals_worst"

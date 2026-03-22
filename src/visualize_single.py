@@ -6,6 +6,7 @@ from .model import Generator
 from .utils import prepare_tensors_for_visualization
 from .config import Config
 from .visualize_image import visualize_image
+from .load_model import load_model
 
 
 def visualize_single(
@@ -34,7 +35,7 @@ def visualize_single(
 
     data_dir = meta.data_dir
     results_dir = Path(meta.results_dir)
-    checkpoint_path = Path(meta.checkpoint_dir) / "best_model.pth"
+    checkpoint_path = load_model(cfg)
 
     split = getattr(meta, "split", "val")
     img_size: tuple[int, int] = model.img_size

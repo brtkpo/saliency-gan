@@ -84,12 +84,22 @@ Controls the overall pipeline behavior.
 - **mode** – what the program should do: `"train"` (train + evaluate + analyze), `"evaluate"` (only evaluate + analyze), or `null` (skip training/evaluation)  
 - **data_dir** – path to the dataset folder (e.g., `"data"`)  
 - **results_dir** – folder where results (CSV, images) are saved  
-- **checkpoint_dir** – folder where model checkpoints are stored  
+- **checkpoint_dir** – folder where model checkpoints are stored
 
 #### visualization
 Controls visualization behavior.  
 - **visualize_results** – if `true`, generates and saves the top 5 best and top 5 worst predictions  (set `null` to disable)  
 - **visualize_single** – index of a single image to visualize (set `null` to disable)  
+---
+
+## Model Weights
+
+The trained model weights (`best_model.pth`) are not included in the repository.
+
+At runtime:
+- the model is loaded from `checkpoints/best_model.pth` if available,
+- otherwise it is automatically downloaded from Hugging Face:
+https://huggingface.co/brtkpo/Saliency_GAN
 ---
 
 ## Examples of Saliency Predictions
